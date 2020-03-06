@@ -2,6 +2,9 @@ import gym
 import numpy as np
 import predictor
 import math
+import matplotlib.pyplot as plt
+
+DEBUG = False
 
 
 def get_status(_observation):
@@ -56,7 +59,6 @@ def get_action(_env, _q_table, _observation, _episode):
 
 
 if __name__ == '__main__':
-
     env = gym.make('MountainCar-v0')
     predictor = predictor.Predictor()
 
@@ -65,15 +67,22 @@ if __name__ == '__main__':
 
     observation = env.reset()
     rewards = []
+    loss = []
+    errors = []
+    steps = []
+    loop = 10000
+    loop = 50
+
     # 10000エピソードで学習する
-    for episode in range(10000):
+    for episode in range(loop):
 
         total_reward = 0
         observation = env.reset()
         # env.render()
+        each_errors = []
         train_x = []
         train_y = []
-        for _ in range(200):
+        for step in range(200):
             # env.render()
             # ε-グリーディ法で行動を選択
             action = get_action(env, q_table, observation, episode)
@@ -85,9 +94,13 @@ if __name__ == '__main__':
             _pos, _vel = get_status_zero_one(next_observation)
             error = math.sqrt(
                 math.pow(predict[0][0] - _pos, 2) + math.pow(predict[0][1] - _vel, 2))
-            print("predict:", predict)
-            print("actual:", _pos, _vel)
-            print("error:", error)
+            each_errors.append(error)
+
+            if DEBUG:
+                print("predict:", predict)
+                print("actual:", _pos, _vel)
+                print("error:", error)
+
             # Qテーブルの更新
             q_table = update_q_table(
                 q_table, action, observation, next_observation, reward, episode)
@@ -98,12 +111,16 @@ if __name__ == '__main__':
             train_x.append([_pos, _vel, action/2.0])
             train_y.append([next_pos, next_pos])
 
-            print("train")
-            print(_pos, _vel, action/2.0)
-            print(next_pos, next_pos)
-            print("------")
+            if DEBUG:
+                print("train")
+                print(_pos, _vel, action/2.0)
+                print(next_pos, next_pos)
+                print("------")
+
             observation = next_observation
+
             if done:
+                print(reward, step)
                 # doneがTrueになったら１エピソード終了
                 if episode % 100 == 0:
                     print('episode: {}, total_reward: {}'.format(
@@ -111,7 +128,31 @@ if __name__ == '__main__':
                 rewards.append(total_reward)
                 break
 
-        predictor.train(
+        h = predictor.train(
             np.array(train_x),
             np.array(train_y)
         )
+
+        loss.append(h.history['loss'][0])
+
+        errors.append(np.array(each_errors).mean())
+
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
+    ax.plot(loss)
+    ax.set_title('loss')
+    plt.savefig("loss.png")
+
+    fig = plt.figure(2)
+    ax = fig.add_subplot(111)
+    ax.plot(errors)
+    ax.set_title('errors')
+    plt.savefig("errors.png")
+
+    fig = plt.figure(3)
+    ax = fig.add_subplot(111)
+    ax.plot(steps)
+    ax.set_title('step')
+    plt.savefig("step.png")
+
+    plt.show()

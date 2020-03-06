@@ -1,7 +1,7 @@
 import keras
-from keras.layers import Input, Dense, Dropout
+from keras.layers import Input, Dense, Dropout, Concatenate
 from keras.models import Model
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop, Adam
 import numpy as np
 
 
@@ -13,9 +13,12 @@ class Predictor():
         input_layer = Input(shape=(3,))
         layer1 = Dense(10, activation='relu')(input_layer)
         layer1 = Dropout(0.3)(layer1)
+
         layer2 = Dense(5, activation='relu')(layer1)
         layer2 = Dropout(0.3)(layer2)
-        layer3 = Dense(10, activation='relu')(layer2)
+
+        m = Concatenate()([layer1, layer2])
+        layer3 = Dense(10, activation='relu')(m)
         layer3 = Dropout(0.3)(layer3)
         output_layer = Dense(2, activation='sigmoid')(layer3)
         model = Model(input_layer, output_layer)
@@ -24,7 +27,7 @@ class Predictor():
         loss = 'mse'
 
         model.compile(loss=loss,
-                      optimizer=RMSprop(),
+                      optimizer=Adam(),
                       metrics=['accuracy'])
         return model
 
@@ -33,6 +36,7 @@ class Predictor():
                                       batch_size=200,
                                       epochs=1,
                                       verbose=1)
+        return self.history
 
     def predict(self, x):
         return self.model.predict_on_batch(x)
@@ -44,7 +48,7 @@ def main():
         [1, 2, 3]
     ])
     y_train = np.array([
-        [2, 3, 3]
+        [2, 3]
     ])
 
     p.model.summary()
